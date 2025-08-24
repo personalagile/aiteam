@@ -41,3 +41,28 @@ class ACFeedbackRequestSerializer(serializers.Serializer):
 
     def update(self, instance: Any, validated_data: dict[str, Any]) -> Any:  # pragma: no cover
         return instance
+
+
+class MemoryAppendSerializer(serializers.Serializer):
+    """Validate input for appending to short-term memory."""
+
+    item = serializers.CharField(max_length=4000)
+
+    def create(self, validated_data: dict[str, Any]) -> dict[str, Any]:  # pragma: no cover
+        return validated_data
+
+    def update(self, instance: Any, validated_data: dict[str, Any]) -> Any:  # pragma: no cover
+        return instance
+
+
+class AgentThinkRequestSerializer(serializers.Serializer):
+    """Validate input for agent thinking process."""
+
+    agent = serializers.ChoiceField(choices=["po", "ac"])  # Product Owner or Agile Coach
+    goal = serializers.CharField(max_length=4000)
+
+    def create(self, validated_data: dict[str, Any]) -> dict[str, Any]:  # pragma: no cover
+        return validated_data
+
+    def update(self, instance: Any, validated_data: dict[str, Any]) -> Any:  # pragma: no cover
+        return instance

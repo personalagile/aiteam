@@ -10,15 +10,27 @@ from django.views.decorators.http import require_GET, require_POST
 
 from agents_core.agile_coach import AgileCoachAgent
 from agents_core.product_owner import ProductOwnerAgent
+from aiteam import __version__
 from memory.short_term import ShortTermMemory
 from orchestrator.tasks import run_retro
 
-from .serializers import ACFeedbackRequestSerializer, PlanRequestSerializer
+from .serializers import (
+    ACFeedbackRequestSerializer,
+    AgentThinkRequestSerializer,
+    MemoryAppendSerializer,
+    PlanRequestSerializer,
+)
 
 
 def health(request: HttpRequest) -> JsonResponse:
     """Simple health endpoint for readiness/liveness checks."""
     return JsonResponse({"status": "ok"})
+
+
+@require_GET
+def version(request: HttpRequest) -> JsonResponse:
+    """Return application version."""
+    return JsonResponse({"version": str(__version__)})
 
 
 @require_GET
@@ -36,6 +48,28 @@ def memory_history(request: HttpRequest, agent: str) -> JsonResponse:
     stm = ShortTermMemory()
     items = stm.history(agent, limit=limit)
     return JsonResponse({"agent": agent, "limit": limit, "items": items})
+
+
+@require_POST
+def memory_append(request: HttpRequest, agent: str) -> JsonResponse:
+    """Append an item to short-term memory for an agent.
+
+    Body JSON:
+        {"item": "<text>"}
+    """
+    try:
+        data = json.loads(request.body.decode() or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"errors": {"non_field_errors": ["Invalid JSON body."]}}, status=400)
+
+    ser = MemoryAppendSerializer(data=data)
+    if not ser.is_valid():
+        return JsonResponse({"errors": ser.errors}, status=400)
+
+    stm = ShortTermMemory()
+    item = ser.validated_data["item"]
+    stm.append(agent, item)
+    return JsonResponse({"agent": agent, "item": item}, status=201)
 
 
 @require_POST
@@ -82,6 +116,31 @@ def ac_feedback(request: HttpRequest) -> JsonResponse:
         ser.validated_data["tasks"]
     )
     return JsonResponse({"feedback": feedback})
+
+
+@require_POST
+def agent_think(request: HttpRequest) -> JsonResponse:
+    """Have a core agent generate a thought for a goal and record it.
+
+    Body JSON:
+        {"agent": "po"|"ac", "goal": "<text>"}
+    """
+    try:
+        data = json.loads(request.body.decode() or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"errors": {"non_field_errors": ["Invalid JSON body."]}}, status=400)
+
+    ser = AgentThinkRequestSerializer(data=data)
+    if not ser.is_valid():
+        return JsonResponse({"errors": ser.errors}, status=400)
+
+    stm = ShortTermMemory()
+    if ser.validated_data["agent"] == "po":
+        agent = ProductOwnerAgent(name="po", role="Product Owner", memory=stm)
+    else:
+        agent = AgileCoachAgent(name="ac", role="Agile Coach", memory=stm)
+    thought = agent.think(ser.validated_data["goal"])
+    return JsonResponse({"thought": thought})
 
 
 @require_POST

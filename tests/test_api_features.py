@@ -39,3 +39,42 @@ def test_retro_run_endpoint() -> None:
     data = resp.json()
     assert data.get("accepted") is True
     assert isinstance(data.get("scheduled"), bool)
+
+
+def test_version_endpoint() -> None:
+    client = Client()
+    resp = client.get("/api/version")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert isinstance(data.get("version"), str)
+    assert data["version"]
+
+
+def test_memory_append_and_history_roundtrip() -> None:
+    client = Client()
+    agent = "po"
+    item = "test memory append"
+    resp = client.post(
+        f"/api/memory/{agent}/append",
+        data=json.dumps({"item": item}),
+        content_type="application/json",
+    )
+    assert resp.status_code == 201
+    # Verify via history
+    resp2 = client.get(f"/api/memory/{agent}/history", {"limit": 5})
+    assert resp2.status_code == 200
+    data = resp2.json()
+    assert any(item in s for s in data.get("items", []))
+
+
+def test_agent_think_endpoint() -> None:
+    client = Client()
+    resp = client.post(
+        "/api/agent/think",
+        data=json.dumps({"agent": "po", "goal": "Ship MVP"}),
+        content_type="application/json",
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert isinstance(data.get("thought"), str)
+    assert "Ship MVP" in data["thought"]
