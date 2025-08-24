@@ -11,11 +11,11 @@ class Memory(Protocol):
 
     def append(self, agent: str, item: str) -> None:
         """Persist an item for the given agent."""
-        pass  # pragma: no cover - protocol stub
+        raise NotImplementedError  # pragma: no cover - protocol stub
 
     def history(self, agent: str, limit: int = 20) -> list[str]:
         """Return the last ``limit`` items for the agent."""
-        pass  # pragma: no cover - protocol stub
+        raise NotImplementedError  # pragma: no cover - protocol stub
 
 
 @dataclass(slots=True)

@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .base import BaseAgent
 from memory.long_term import KnowledgeGraph
+
+from .base import BaseAgent
 
 
 @dataclass(slots=True)
@@ -42,6 +43,6 @@ class AgileCoachAgent(BaseAgent):
         try:
             kg = KnowledgeGraph()
             kg.upsert_note(self.name, f"feedback: {advice}")
-        except Exception:  # pragma: no cover - defensive
+        except Exception:  # pragma: no cover - defensive  # pylint: disable=broad-exception-caught
             pass
         return advice

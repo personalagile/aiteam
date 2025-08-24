@@ -21,19 +21,19 @@ Non-goals: a full MLOps/vector database platform, proprietary tool integrations 
 
 ## 3. System Context
 ```mermaid
-flowchart LR
-  User[User] --> UI[Chat UI (Django and Channels)]
-  UI -->|WebSocket| WS[ChatConsumer]
-  UI -->|HTTP and REST| API[REST API]
-  WS --> ORCH[Orchestrator]
+graph LR
+  User["User"] --> UI["Chat UI - Django and Channels"]
+  UI --> WS["ChatConsumer"]
+  UI --> API["REST API"]
+  WS --> ORCH["Orchestrator"]
   API --> ORCH
-  ORCH --> PO[ProductOwnerAgent]
-  ORCH --> AC[AgileCoachAgent]
-  ORCH --> EXP[DynamicExpertAgents]
-  ORCH --> STM[(Redis Short-term)]
-  ORCH --> LTM[(Neo4j Long-term)]
-  ORCH --> LLM[Ollama or OpenAI]
-  ORCH --> Celery[Celery Worker]
+  ORCH --> PO["ProductOwnerAgent"]
+  ORCH --> AC["AgileCoachAgent"]
+  ORCH --> EXP["DynamicExpertAgents"]
+  ORCH --> STM["Redis short-term"]
+  ORCH --> LTM["Neo4j long-term"]
+  ORCH --> LLM["Ollama or OpenAI"]
+  ORCH --> Celery["Celery Worker"]
   Celery --> STM
 ```
 
@@ -57,7 +57,7 @@ graph TD
 
 ### 5.2 Level 2 – Main Components
 ```mermaid
-flowchart LR
+graph LR
   subgraph Web
     C[apps/chat/consumers.py]
     V[apps/chat/views.py]
@@ -105,7 +105,7 @@ sequenceDiagram
   participant PO as ProductOwnerAgent
   participant AC as AgileCoachAgent
   participant EXP as DynamicExpertAgents
-  participant STM as ShortTermMemory (Redis)
+  participant STM as ShortTermMemory - Redis
 
   B->>C: JSON { message }
   C->>PO: plan_work(message)
@@ -130,19 +130,19 @@ sequenceDiagram
 
 ## 7. Deployment View
 ```mermaid
-flowchart LR
+graph LR
   subgraph Client
-    Browser[Browser]
+    Browser["Browser"]
   end
   subgraph Server
-    Django[ASGI: Django and Channels]
-    CeleryW[Celery Worker]
+    Django["ASGI Django and Channels"]
+    CeleryW["Celery Worker"]
   end
   subgraph Data
-    Redis[(Redis)]
-    Neo4j[(Neo4j)]
+    Redis["Redis"]
+    Neo4j["Neo4j"]
   end
-  LLM[Ollama or OpenAI]
+  LLM["Ollama or OpenAI"]
 
   Browser --> Django
   Django --> Redis
@@ -159,6 +159,7 @@ flowchart LR
 - Fault tolerance: optional dependencies with graceful fallback
 - Security: minimal for dev; extendable with AuthN/Z, rate limits
 - Tests/Quality: pytest, Ruff, Black, isort, Pylint; CI via GitHub Actions
+ - Versioning: Semantic Versioning (SemVer); Changelog: Keep a Changelog; see CHANGELOG.md
 
 ## 9. Architectural Decisions (ADRs)
 - Django + Channels for WebSocket communication

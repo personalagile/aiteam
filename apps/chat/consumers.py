@@ -7,8 +7,9 @@ integration path for routing messages to the ProductOwnerAgent.
 from __future__ import annotations
 
 import asyncio
-from channels.generic.websocket import AsyncJsonWebsocketConsumer
+
 import structlog
+from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
 from agents_core.agile_coach import AgileCoachAgent
 from agents_core.dynamic_expert import DynamicExpertAgent
@@ -36,11 +37,13 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
         # Route to ProductOwnerAgent for planning with progressive updates
         stm = ShortTermMemory()
-        po = ProductOwnerAgent(name="po", role="Product Owner", memory=stm)
+        # ProductOwnerAgent constructed inline below to reduce locals
 
         await self.send_json({"type": "po_plan_start", "message": "Planning started."})
 
-        tasks = po.plan_work(str(user_msg))
+        tasks = ProductOwnerAgent(name="po", role="Product Owner", memory=stm).plan_work(
+            str(user_msg)
+        )
 
         # Stream individual planning steps
         for idx, task in enumerate(tasks, start=1):
@@ -48,16 +51,19 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             await self.send_json({"type": "po_plan_step", "index": idx, "task": task})
 
         # Final plan
-        await self.send_json({
-            "type": "po_plan_final",
-            "message": f"Plan erstellt: {len(tasks)} Aufgabe(n)",
-            "tasks": tasks,
-        })
+        await self.send_json(
+            {
+                "type": "po_plan_final",
+                "message": f"Plan erstellt: {len(tasks)} Aufgabe(n)",
+                "tasks": tasks,
+            }
+        )
         logger.info("chat.sent_plan", tasks=len(tasks))
 
         # Agile Coach feedback
-        ac = AgileCoachAgent(name="ac", role="Agile Coach", memory=stm)
-        feedback = ac.feedback_on_plan(tasks)
+        feedback = AgileCoachAgent(name="ac", role="Agile Coach", memory=stm).feedback_on_plan(
+            tasks
+        )
         await asyncio.sleep(0.1)
         await self.send_json({"type": "ac_feedback", "message": feedback})
         logger.info("chat.sent_ac_feedback")
@@ -65,16 +71,21 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         # Dynamic Expert selection (stubbed streaming updates)
         experts = ["frontend", "backend"]
         await asyncio.sleep(0.1)
-        await self.send_json({"type": "expert_update", "message": "Selecting experts...", "experts": []})
+        await self.send_json(
+            {"type": "expert_update", "message": "Selecting experts...", "experts": []}
+        )
         prepared: list[str] = []
         for e in experts:
-            agent = DynamicExpertAgent(name=f"expert-{e}", role="Expert", expertise=e, memory=stm)
-            msg = agent.solve(f"Prepare for: {user_msg}")
+            result = DynamicExpertAgent(
+                name=f"expert-{e}", role="Expert", expertise=e, memory=stm
+            ).solve(f"Prepare for: {user_msg}")
             prepared.append(e)
             await asyncio.sleep(0.1)
-            await self.send_json({"type": "expert_update", "expert": e, "message": msg})
+            await self.send_json({"type": "expert_update", "expert": e, "message": result})
         await asyncio.sleep(0.1)
-        await self.send_json({"type": "expert_update", "message": "Experts prepared.", "experts": prepared})
+        await self.send_json(
+            {"type": "expert_update", "message": "Experts prepared.", "experts": prepared}
+        )
         logger.info("chat.sent_expert_updates", experts=len(prepared))
 
     async def disconnect(self, code: int) -> None:  # pragma: no cover - event callback

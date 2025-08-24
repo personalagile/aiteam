@@ -1,4 +1,5 @@
 # AITEAM — Agile Agentic AI System
+[![CI](https://github.com/personalagile/aiteam/actions/workflows/ci.yml/badge.svg)](https://github.com/personalagile/aiteam/actions/workflows/ci.yml)
 
 A Django-based, API-first, multi-agent system following agile values. It boots with two agents:
 - Product Owner (PO)
@@ -7,6 +8,19 @@ A Django-based, API-first, multi-agent system following agile values. It boots w
 They collaborate to spawn cross-functional expert agents, maintain short- and long-term memory, and iterate with regular retrospectives.
 
 ## Quick Start
+
+Using Makefile (recommended)
+```
+make install
+cp env.example .env
+# optional local services
+docker compose up -d redis neo4j ollama
+.venv/bin/python manage.py migrate
+make daphne   # or: make run
+```
+Open http://127.0.0.1:8001 for the chat UI (Daphne) or http://127.0.0.1:8000 (runserver).
+
+Alternative: Manual setup
 
 1) Create a virtual environment and install dependencies
 ```
@@ -44,14 +58,14 @@ Open http://127.0.0.1:8000 for the chat UI.
 
 ## Architecture (Mermaid)
 ```mermaid
-flowchart LR
-  UI[Chat UI (Django and Channels)] --> API[DRF API]
+graph LR
+  UI[Chat UI - Django and Channels] --> API[DRF API]
   API --> ORCH[Agent Orchestrator]
   ORCH --> PO[ProductOwnerAgent]
   ORCH --> AC[AgileCoachAgent]
   ORCH --> EXP[DynamicExpertAgents]
-  ORCH --> ST[Redis (Short-term)]
-  ORCH --> LT[Neo4j (Long-term)]
+  ORCH --> ST[Redis short-term]
+  ORCH --> LT[Neo4j long-term]
   ORCH --> LLM[Ollama or OpenAI]
   ORCH --> Celery[Celery and Beat]
 ```
@@ -102,17 +116,29 @@ Key environment variables (see `env.example`):
 - `DJANGO_SECRET_KEY`, `DJANGO_DEBUG`, `ALLOWED_HOSTS` — Django
 
 ## Development
-- Preferred runner: `.venv/bin/daphne -b 127.0.0.1 -p 8001 aiteam.asgi:application`
+- Preferred runner: `make daphne` (ASGI on port 8001)
+- Alternative: `.venv/bin/daphne -b 127.0.0.1 -p 8001 aiteam.asgi:application`
 - Web UI: `templates/chat/index.html`
 - WebSocket consumer: `apps/chat/consumers.py`
 - Agents: `agents_core/*`
 
 ## Testing
+Using Makefile
+```
+make test
+```
+Manual
 ```
 .venv/bin/pytest -q
 ```
 
 ## Linting & Formatting
+Using Makefile
+```
+make fmt   # isort, black, ruff --fix
+make lint  # ruff, black --check, isort --check-only, pylint
+```
+Manual
 ```
 .venv/bin/ruff check .
 .venv/bin/black --check .
