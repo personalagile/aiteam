@@ -1,0 +1,10 @@
+"""AITEAM Django project init.
+
+Exposes the Celery app for Django autodiscovery.
+"""
+
+from __future__ import annotations
+
+from .celery import app as celery_app
+
+__all__ = ["celery_app"]
