@@ -45,15 +45,15 @@ Open http://127.0.0.1:8000 for the chat UI.
 ## Architecture (Mermaid)
 ```mermaid
 flowchart LR
-  UI[Chat UI (Django+Channels)] --> API[DRF API]
+  UI[Chat UI (Django and Channels)] --> API[DRF API]
   API --> ORCH[Agent Orchestrator]
   ORCH --> PO[ProductOwnerAgent]
   ORCH --> AC[AgileCoachAgent]
   ORCH --> EXP[DynamicExpertAgents]
   ORCH --> ST[Redis (Short-term)]
   ORCH --> LT[Neo4j (Long-term)]
-  ORCH --> LLM[Ollama/OpenAI]
-  ORCH --> Celery[Celery+Beat]
+  ORCH --> LLM[Ollama or OpenAI]
+  ORCH --> Celery[Celery and Beat]
 ```
 
 ## Documentation

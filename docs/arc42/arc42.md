@@ -22,9 +22,9 @@ Non-goals: a full MLOps/vector database platform, proprietary tool integrations 
 ## 3. System Context
 ```mermaid
 flowchart LR
-  User[User] --> UI[Chat UI (Django + Channels)]
+  User[User] --> UI[Chat UI (Django and Channels)]
   UI -->|WebSocket| WS[ChatConsumer]
-  UI -->|HTTP/REST| API[REST API]
+  UI -->|HTTP and REST| API[REST API]
   WS --> ORCH[Orchestrator]
   API --> ORCH
   ORCH --> PO[ProductOwnerAgent]
@@ -32,7 +32,7 @@ flowchart LR
   ORCH --> EXP[DynamicExpertAgents]
   ORCH --> STM[(Redis Short-term)]
   ORCH --> LTM[(Neo4j Long-term)]
-  ORCH --> LLM[Ollama / OpenAI]
+  ORCH --> LLM[Ollama or OpenAI]
   ORCH --> Celery[Celery Worker]
   Celery --> STM
 ```
@@ -135,14 +135,14 @@ flowchart LR
     Browser[Browser]
   end
   subgraph Server
-    Django[ASGI: Django + Channels]
+    Django[ASGI: Django and Channels]
     CeleryW[Celery Worker]
   end
   subgraph Data
     Redis[(Redis)]
     Neo4j[(Neo4j)]
   end
-  LLM[Ollama/OpenAI]
+  LLM[Ollama or OpenAI]
 
   Browser --> Django
   Django --> Redis
