@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+
 from asgiref.sync import async_to_sync
 from channels.testing import WebsocketCommunicator
 
@@ -20,9 +22,12 @@ def test_chat_ws_streaming_messages() -> None:
         await communicator.send_json_to({"message": "Build chat"})
 
         seen: list[str] = []
-        # Read a handful of messages and check key types are present
-        for _ in range(10):
-            evt = await communicator.receive_json_from()
+        # Read messages until we get final plan and feedback, or timeout
+        for _ in range(200):
+            try:
+                evt = await asyncio.wait_for(communicator.receive_json_from(), timeout=5.0)
+            except TimeoutError:
+                break
             t = evt.get("type")
             if isinstance(t, str):
                 seen.append(t)

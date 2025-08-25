@@ -15,8 +15,9 @@ def test_plan_endpoint_returns_tasks() -> None:
     assert resp.status_code == 200
     data = resp.json()
     assert isinstance(data.get("tasks"), list)
-    assert data.get("count") == len(data["tasks"]) == 2
-    assert any("Build chat" in t for t in data["tasks"])  # echo of description
+    assert data.get("count") == len(data["tasks"])  # count must match
+    assert len(data["tasks"]) >= 1  # at least one task
+    assert all(isinstance(t, str) and t.strip() for t in data["tasks"])  # non-empty strings
 
 
 def test_ac_feedback_endpoint_returns_feedback() -> None:
@@ -77,4 +78,4 @@ def test_agent_think_endpoint() -> None:
     assert resp.status_code == 200
     data = resp.json()
     assert isinstance(data.get("thought"), str)
-    assert "Ship MVP" in data["thought"]
+    assert data["thought"].strip() != ""

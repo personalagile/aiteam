@@ -23,6 +23,9 @@ jobs:
           ruff check .
           black --check .
           isort --check-only .
-          pylint aiteam apps agents_core memory tools || true
+          pylint aiteam apps agents_core memory orchestrator tools
+      - name: Type check
+        run: |
+          mypy aiteam apps agents_core memory orchestrator tools || true
       - name: Tests
-        run: pytest -q --cov=aiteam --cov=apps --cov=agents_core --cov=memory --cov=tools --cov-report=term-missing
+        run: pytest -q --cov=aiteam --cov=apps --cov=agents_core --cov=memory --cov=orchestrator --cov=tools --cov-report=term-missing --cov-fail-under=90

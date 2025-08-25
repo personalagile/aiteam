@@ -8,13 +8,33 @@
 </head>
 <body class="bg-light">
 <div class="container py-4">
-  <h1 class="mb-3">AITEAM Chat</h1>
-  <div class="card">
-    <div class="card-body">
-      <div id="log" class="mb-3" style="height: 300px; overflow-y: auto; background: #f8f9fa; padding: 10px;"></div>
-      <div class="input-group">
-        <input id="msg" class="form-control" placeholder="Deine Nachricht an den Product Owner..."/>
-        <button id="send" class="btn btn-primary">Senden</button>
+  <div class="d-flex align-items-center mb-3">
+    <h1 class="me-3 mb-0">AITEAM Chat</h1>
+    <span id="conn-status" class="badge text-bg-secondary">Connecting…</span>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-body">
+          <div id="log" class="mb-3" style="height: 340px; overflow-y: auto; background: #f8f9fa; padding: 10px;"></div>
+          <div class="input-group">
+            <input id="msg" class="form-control" placeholder="Deine Nachricht an den Product Owner..."/>
+            <button id="send" class="btn btn-primary">Senden</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="card-title mb-0">PO History</h5>
+            <button id="refresh-history" class="btn btn-sm btn-outline-secondary">Refresh</button>
+          </div>
+          <div id="po-history" class="list-group small" style="max-height: 360px; overflow-y: auto;"></div>
+          <div class="form-text">Tip: set localStorage.api_token to send X-API-Token header.</div>
+        </div>
       </div>
     </div>
   </div>
@@ -22,6 +42,9 @@
 <script>
 (function(){
   const log = document.getElementById('log');
+  const conn = document.getElementById('conn-status');
+  const historyList = document.getElementById('po-history');
+  const refreshBtn = document.getElementById('refresh-history');
   const msg = document.getElementById('msg');
   const btn = document.getElementById('send');
   const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
@@ -36,7 +59,41 @@
     log.scrollTop = log.scrollHeight;
   }
 
-  ws.onopen = () => addLine('Verbunden.', 'text-success');
+  function authHeaders() {
+    const h = {};
+    try {
+      const t = localStorage.getItem('api_token');
+      if (t) h['X-API-Token'] = t;
+    } catch {}
+    return h;
+  }
+
+  async function refreshHistory(limit=10){
+    historyList.innerHTML = '';
+    try {
+      const res = await fetch(`/api/memory/po/history?limit=${limit}`, { headers: authHeaders() });
+      if(!res.ok) throw new Error(String(res.status));
+      const data = await res.json();
+      (data.items || []).forEach((it) => {
+        const a = document.createElement('div');
+        a.className = 'list-group-item list-group-item-action';
+        a.textContent = it;
+        historyList.appendChild(a);
+      });
+    } catch (e) {
+      const a = document.createElement('div');
+      a.className = 'list-group-item list-group-item-danger';
+      a.textContent = `History error: ${e}`;
+      historyList.appendChild(a);
+    }
+  }
+
+  ws.onopen = () => {
+    addLine('Verbunden.', 'text-success');
+    conn.className = 'badge text-bg-success';
+    conn.textContent = 'Connected';
+    refreshHistory();
+  };
   ws.onmessage = (ev) => {
     try {
       const data = JSON.parse(ev.data);
@@ -57,6 +114,8 @@
         case 'po_plan_final':
           addLine(`${data.message || 'plan ready'}:`, 'fw-bold');
           (data.tasks || []).forEach((t) => addLine(`- ${t}`, ''));
+          // plan written to STM -> update PO history
+          refreshHistory();
           break;
         case 'ac_feedback':
           addLine(`ac: ${data.message}`, 'fst-italic');
@@ -81,8 +140,16 @@
       addLine(ev.data, '');
     }
   };
-  ws.onerror = () => addLine('WebSocket Fehler.', 'text-danger');
-  ws.onclose = () => addLine('Verbindung geschlossen.', 'text-danger');
+  ws.onerror = () => {
+    addLine('WebSocket Fehler.', 'text-danger');
+    conn.className = 'badge text-bg-danger';
+    conn.textContent = 'Error';
+  };
+  ws.onclose = () => {
+    addLine('Verbindung geschlossen.', 'text-danger');
+    conn.className = 'badge text-bg-danger';
+    conn.textContent = 'Closed';
+  };
 
   btn.onclick = () => {
     const text = msg.value.trim();
@@ -92,6 +159,8 @@
     msg.value = '';
     msg.focus();
   };
+
+  refreshBtn.onclick = () => refreshHistory();
 })();
 </script>
 </body>

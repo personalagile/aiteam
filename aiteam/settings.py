@@ -25,6 +25,10 @@ ALLOWED_HOSTS = [
     h.strip() for h in os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",") if h.strip()
 ]
 
+# Logging level (controls structlog and Django loggers)
+LOG_LEVEL_NAME = os.getenv("LOG_LEVEL", "INFO").upper()
+LOG_LEVEL = getattr(logging, LOG_LEVEL_NAME, logging.INFO)
+
 # Applications
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -35,6 +39,8 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # Third-party
     "rest_framework",
+    "drf_spectacular",
+    "drf_spectacular_sidecar",
     "channels",
     # First-party
     "orchestrator",
@@ -102,6 +108,16 @@ REST_FRAMEWORK = {
     "DEFAULT_PARSER_CLASSES": [
         "rest_framework.parsers.JSONParser",
     ],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+# OpenAPI/Swagger settings
+SPECTACULAR_SETTINGS = {
+    "TITLE": "AITEAM API",
+    "DESCRIPTION": "Agentic Agile Team API",
+    # Avoid importing aiteam.__version__ here to prevent circular imports
+    "VERSION": os.getenv("AITEAM_VERSION", "0.1.0"),
+    "SERVE_INCLUDE_SCHEMA": False,
 }
 
 # Channels
@@ -148,7 +164,7 @@ structlog.configure(
         structlog.processors.add_log_level,
         (structlog.dev.ConsoleRenderer() if DEBUG else structlog.processors.JSONRenderer()),
     ],
-    wrapper_class=structlog.make_filtering_bound_logger(logging.INFO),
+    wrapper_class=structlog.make_filtering_bound_logger(LOG_LEVEL),
     context_class=dict,
     cache_logger_on_first_use=True,
 )
@@ -168,7 +184,7 @@ LOGGING = {
         }
     },
     "loggers": {
-        "django": {"handlers": ["console"], "level": "INFO"},
-        "aiteam": {"handlers": ["console"], "level": "INFO"},
+        "django": {"handlers": ["console"], "level": LOG_LEVEL_NAME},
+        "aiteam": {"handlers": ["console"], "level": LOG_LEVEL_NAME},
     },
 }

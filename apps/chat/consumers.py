@@ -68,20 +68,25 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         await self.send_json({"type": "ac_feedback", "message": feedback})
         logger.info("chat.sent_ac_feedback")
 
-        # Dynamic Expert selection (stubbed streaming updates)
+        # Dynamic Expert selection (now parallelized with streaming updates)
         experts = ["frontend", "backend"]
         await asyncio.sleep(0.1)
         await self.send_json(
             {"type": "expert_update", "message": "Selecting experts...", "experts": []}
         )
+
         prepared: list[str] = []
-        for e in experts:
+
+        async def _prepare_and_stream(expertise: str) -> None:
             result = DynamicExpertAgent(
-                name=f"expert-{e}", role="Expert", expertise=e, memory=stm
+                name=f"expert-{expertise}", role="Expert", expertise=expertise, memory=stm
             ).solve(f"Prepare for: {user_msg}")
-            prepared.append(e)
-            await asyncio.sleep(0.1)
-            await self.send_json({"type": "expert_update", "expert": e, "message": result})
+            prepared.append(expertise)
+            await asyncio.sleep(0.05)
+            await self.send_json({"type": "expert_update", "expert": expertise, "message": result})
+
+        tasks = [asyncio.create_task(_prepare_and_stream(e)) for e in experts]
+        await asyncio.gather(*tasks)
         await asyncio.sleep(0.1)
         await self.send_json(
             {"type": "expert_update", "message": "Experts prepared.", "experts": prepared}

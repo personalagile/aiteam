@@ -1,6 +1,6 @@
 # arc42 – Architecture Documentation AITEAM
 
-Version: 0.1.0 • Date: 2025-08-24
+Version: 0.1.0 • Date: 2025-08-25
 
 ## 1. Introduction and Goals
 
@@ -198,6 +198,12 @@ graph LR
   - Files: `tests/test_chat_ws.py`, `tests/test_api_memory.py`
 - CI (basic): GitHub Actions workflow
   - File: `.github/workflows/ci.yml`
+ - UI improvements: connection status badge and PO history panel (REST fetch)
+   - Files: `templates/chat/index.html`
+ - Optional security: header token auth and simple in-process rate limiting (disabled by default)
+   - File: `apps/api/views.py`, env: `API_ENABLE_AUTH`, `API_TOKEN`, `API_RATE_LIMIT_*`
+ - LLM integration (optional): used in `BaseAgent.think()` and `BaseAgent.act()`, and preferred in `ProductOwnerAgent.plan_work()` when configured; deterministic fallbacks otherwise
+   - Files: `agents_core/base.py`, `agents_core/product_owner.py`, `agents_core/llm.py`
 
 ### Stubs (placeholder logic available)
 - Dynamic experts (selection/orchestration is stubbed; events `expert_update`)
@@ -206,12 +212,13 @@ graph LR
   - File: `memory/long_term.py`
 - Orchestrator/Celery flows (retrospective as stub)
   - File: `orchestrator/tasks.py`
+ - Parallel expert work: implemented in-chat parallel preparation; full orchestrator-driven workflows still pending
+   - File: `apps/chat/consumers.py`
 
 ### Planned (not implemented yet)
-- LLM integration (Ollama/OpenAI) in agent planning/action
-- Orchestrator workflows for real parallel expert work
-- UI improvements (error states, status badges, history panel)
-- Security: authentication/authorization, rate limiting
+- Orchestrator workflows for real parallel expert work (central orchestration)
+- Security: authorization model and roles (beyond single token), persistent rate limits
+- UI improvements: richer error states and expert progress visualization
 
 ## 12. Glossary
 - PO: Product Owner Agent

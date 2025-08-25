@@ -18,6 +18,8 @@ keywords = ["agentic ai", "agile", "django", "langchain", "autogen", "neo4j", "r
 dependencies = [
   "Django>=5.0,<6.0",
   "djangorestframework>=3.15",
+  "drf-spectacular>=0.27.0",
+  "drf-spectacular-sidecar>=2024.7.1",
   "channels>=4.0",
   "channels-redis>=4.2",
   "daphne>=4.0",
@@ -47,6 +49,7 @@ docs = [
   "sphinx>=7.3",
   "myst-parser>=2.0.0",
   "sphinx-autodoc-typehints>=2.0.0",
+  "linkify-it-py>=2.0.0",
 ]
 dev = [
   "black>=24.4",

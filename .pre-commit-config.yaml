@@ -28,3 +28,11 @@ repos:
         types: [python]
         args: ["--rcfile=pyproject.toml"]
         additional_dependencies: ["pylint-django>=2.5.5"]
+
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest (quick)
+        entry: pytest -q -k "agents_smoke or api_features or version" --maxfail=1
+        language: system
+        pass_filenames: false

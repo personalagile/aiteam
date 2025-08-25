@@ -73,6 +73,12 @@ graph LR
 ## Documentation
 See `docs/arc42/arc42.md` for the full Arc42 architecture documentation (with Mermaid diagrams).
 
+API documentation (OpenAPI) is available when the server is running:
+- JSON schema: `GET /api/schema/`
+- YAML schema: `GET /api/schema.yaml`
+- Swagger UI: `GET /api/docs/`
+- Redoc UI: `GET /api/redoc/`
+
 ## Features
 - Product Owner (PO) and Agile Coach (AC) core agents
 - Progressive planning streamed over WebSocket
