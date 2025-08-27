@@ -10,6 +10,8 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 
 ### Changed
 - Documentation refinements in README and Arc42
+- Standardized Ruff usage across docs, Makefile, and CI (use `ruff check .` and `--fix` where appropriate); removed invalid flags.
+- Documented optional `_debug` payload in initial `expert_update` WebSocket event and expanded related module docstrings.
 
 ## [0.1.0] - 2025-08-24
 ### Added

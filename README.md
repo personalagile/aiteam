@@ -110,6 +110,10 @@ Server → Client events
 { "type": "expert_update", "message": "Experts prepared.", "experts": ["frontend", "backend"] }
 ```
 
+Note: The initial `expert_update` may include an optional `_debug` object with
+fields such as `provider`, `prompt`, `raw`, and `parsed` to aid debugging of
+LLM/heuristic-based expert selection.
+
 ## REST API
 - `GET /api/health` → `{ "status": "ok" }`
 - `GET /api/memory/<agent>/history?limit=20` → `{ agent, limit, items }`
