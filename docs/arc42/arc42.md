@@ -121,7 +121,7 @@ sequenceDiagram
   AC-->>C: feedback
   C-->>B: { type: ac_feedback, message }
   C->>EXP: prepare(...)
-  C-->>B: { type: expert_update, message: "Selecting experts..." }
+  C-->>B: { type: expert_update, message: "Selecting experts...", experts, _debug }
   loop for each expert
     C-->>B: { type: expert_update, expert, message }
   end
@@ -204,16 +204,16 @@ graph LR
    - File: `apps/api/views.py`, env: `API_ENABLE_AUTH`, `API_TOKEN`, `API_RATE_LIMIT_*`
  - LLM integration (optional): used in `BaseAgent.think()` and `BaseAgent.act()`, and preferred in `ProductOwnerAgent.plan_work()` when configured; deterministic fallbacks otherwise
    - Files: `agents_core/base.py`, `agents_core/product_owner.py`, `agents_core/llm.py`
+ - Dynamic experts: selection and in-chat concurrent preparation with streamed `expert_update` events (initial event may include `_debug` with LLM/heuristic details)
+   - Files: `agents_core/dynamic_expert.py`, `apps/chat/consumers.py`
 
 ### Stubs (placeholder logic available)
-- Dynamic experts (selection/orchestration is stubbed; events `expert_update`)
-  - Files: `agents_core/dynamic_expert.py`, `apps/chat/consumers.py`
 - Long-term memory (Neo4j) minimal implementation, optional
   - File: `memory/long_term.py`
 - Orchestrator/Celery flows (retrospective as stub)
   - File: `orchestrator/tasks.py`
- - Parallel expert work: implemented in-chat parallel preparation; full orchestrator-driven workflows still pending
-   - File: `apps/chat/consumers.py`
+- Full orchestrator-driven expert workflows still pending (in-chat parallel preparation is implemented)
+  - File: `orchestrator/tasks.py`
 
 ### Planned (not implemented yet)
 - Orchestrator workflows for real parallel expert work (central orchestration)
