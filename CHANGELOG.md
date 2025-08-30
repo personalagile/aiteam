@@ -7,6 +7,7 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 ## [Unreleased]
 ### Added
 - Additional open-source docs (SECURITY.md, GitHub issue/PR templates)
+- Sphinx Mermaid support (`sphinxcontrib-mermaid`) and MyST fence mapping for ```mermaid blocks
 
 ### Changed
 - Documentation refinements in README and Arc42
