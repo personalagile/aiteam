@@ -11,9 +11,11 @@ Includes:
 
 from __future__ import annotations
 
+import json
 import structlog
 from celery import group, shared_task
 
+from agents_core.agile_coach import AgileCoachAgent
 from agents_core.dynamic_expert import (
     DynamicExpertAgent,
     select_experts_from_tasks,
@@ -25,16 +27,65 @@ from memory.short_term import ShortTermMemory
 logger = structlog.get_logger(__name__)
 
 
+def _retro_insights(stm: ShortTermMemory) -> dict[str, object]:
+    """Compute simple retrospective insights from short-term memory.
+
+    Currently summarizes recent activity for core agents ("po", "ac").
+    Returns a dict suitable for structured logging and optional persistence.
+    """
+    agents = ("po", "ac")
+    summaries: list[dict[str, object]] = []
+    for agent in agents:
+        hist = stm.history(agent, limit=5)
+        summaries.append(
+            {
+                "agent": agent,
+                "count": len(hist),
+                "last": hist[-1] if hist else "",
+            }
+        )
+    return {"summaries": summaries}
+
+
 @shared_task
 def run_retro() -> str:
-    """Run a retrospective across agents (stub)."""
+    """Run a lightweight retrospective: schedule and record a note.
+
+    Uses ``AgileCoachAgent.schedule_retro()`` to simulate a retro action and
+    records a brief note to long-term memory when available. Returns "ok" to
+    remain backward compatible with existing API/tests.
+    """
     logger.info("retro.run", status="started")
-    # Record a minimal note in long-term memory (no-op if Neo4j not configured)
+
+    # Short-term memory shared across this small workflow
+    stm = ShortTermMemory()
+
+    # Attempt to schedule a retrospective via the Agile Coach agent
+    msg = "retro scheduled"
+    try:
+        ac = AgileCoachAgent(name="ac", role="Agile Coach", memory=stm)
+        msg = ac.schedule_retro()
+    except Exception:  # pragma: no cover - defensive  # pylint: disable=broad-exception-caught
+        pass
+
+    # Record a brief note in long-term memory (no-op if Neo4j not configured)
     try:
         kg = KnowledgeGraph()
-        kg.upsert_note("ac", "retro: improvements captured (stub)")
-    except Exception:  # pragma: no cover  # pylint: disable=broad-exception-caught
+        kg.upsert_note("ac", f"retro: {msg}")
+    except Exception:  # pragma: no cover - defensive  # pylint: disable=broad-exception-caught
         pass
+
+    # Derive and log lightweight insights
+    insights = _retro_insights(stm)
+    logger.info("retro.insights", insights=insights)
+
+    # Persist insights as a compact note (no-op if Neo4j not configured)
+    try:
+        kg = KnowledgeGraph()
+        kg.upsert_note("ac", f"retro_insights: {json.dumps(insights, separators=(',', ':'))}")
+    except Exception:  # pragma: no cover - defensive  # pylint: disable=broad-exception-caught
+        pass
+
     logger.info("retro.run", status="finished")
     return "ok"
 
