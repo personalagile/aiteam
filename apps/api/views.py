@@ -19,7 +19,7 @@ from agents_core.agile_coach import AgileCoachAgent
 from agents_core.product_owner import ProductOwnerAgent
 from aiteam import __version__
 from memory.short_term import ShortTermMemory
-from orchestrator.tasks import run_retro
+from orchestrator.tasks import run_experts_pipeline, run_retro
 
 from .serializers import (
     ACFeedbackRequestSerializer,
@@ -245,12 +245,63 @@ def retro_run(request: HttpRequest) -> JsonResponse:
     execution if scheduling fails.
     """
     scheduled = False
-    try:
-        # Prefer scheduling; may fail if no broker configured
-        run_retro.delay()  # type: ignore[call-arg]
-        scheduled = True
-    except Exception:  # pragma: no cover - defensive  # pylint: disable=broad-exception-caught
-        # Execute locally without broker as a fallback (non-fatal)
+    # Only attempt async scheduling when a broker URL is configured
+    if os.getenv("REDIS_URL"):
+        try:
+            # Prefer scheduling; may fail if broker is unavailable
+            run_retro.delay()  # type: ignore[call-arg]
+            scheduled = True
+        except Exception:  # pragma: no cover - defensive  # pylint: disable=broad-exception-caught
+            pass
+    # Ensure execution happens locally if not scheduled or scheduling failed
+    if not scheduled:
         with contextlib.suppress(Exception):  # pragma: no cover - defensive
             run_retro.apply(args=())  # type: ignore[attr-defined]
     return JsonResponse({"accepted": True, "scheduled": scheduled}, status=202)
+
+
+@csrf_exempt
+@require_POST
+@api_guard
+def experts_run(request: HttpRequest) -> JsonResponse:
+    """Run the orchestrator-driven experts pipeline.
+
+    Body JSON:
+        {"description": "<text>"}
+
+    Query parameters:
+        debug: Include detailed provider/prompt/raw info when truthy.
+        async: If truthy, attempt async scheduling; fallback to sync apply.
+    """
+    try:
+        data = json.loads(request.body.decode() or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"errors": {"non_field_errors": ["Invalid JSON body."]}}, status=400)
+
+    ser = PlanRequestSerializer(data=data)
+    if not ser.is_valid():
+        return JsonResponse({"errors": ser.errors}, status=400)
+
+    debug_flag = str(request.GET.get("debug", "0")).strip().lower() in {"1", "true", "yes", "on"}
+    async_flag = str(request.GET.get("async", "0")).strip().lower() in {"1", "true", "yes", "on"}
+
+    description = ser.validated_data["description"]
+
+    if async_flag:
+        try:
+            job = run_experts_pipeline.delay(description, debug_flag)  # type: ignore[call-arg]
+            return JsonResponse(
+                {"accepted": True, "scheduled": True, "task_id": job.id}, status=202
+            )
+        except Exception:  # pragma: no cover  # pylint: disable=broad-exception-caught
+            pass
+
+    # Synchronous execution (used in tests and when scheduling not requested/available)
+    args_tuple = (description, debug_flag)
+    try:
+        result = run_experts_pipeline.apply(args=args_tuple).get()
+    except Exception:  # pragma: no cover  # pylint: disable=broad-exception-caught
+        return JsonResponse(
+            {"errors": {"non_field_errors": ["Pipeline execution failed."]}}, status=500
+        )
+    return JsonResponse(result)

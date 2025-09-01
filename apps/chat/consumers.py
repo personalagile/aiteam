@@ -10,8 +10,10 @@ heuristic details used for expert selection.
 from __future__ import annotations
 
 import asyncio
+import os
 
 import structlog
+from celery import group
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
 from agents_core.agile_coach import AgileCoachAgent
@@ -22,6 +24,7 @@ from agents_core.dynamic_expert import (
 )
 from agents_core.product_owner import ProductOwnerAgent
 from memory.short_term import ShortTermMemory
+from orchestrator.tasks import expert_prepare
 
 logger = structlog.get_logger(__name__)
 
@@ -68,6 +71,46 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 "_debug": dbg,
             }
         )
+        # Optionally delegate preparation to orchestrator (Celery) when enabled
+        use_orch = os.getenv("EXPERTS_USE_ORCHESTRATOR", "0").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+        if use_orch:
+
+            def _run_group() -> list[dict[str, str]]:
+                try:
+                    job_result = group(
+                        expert_prepare.s(name, user_msg) for name in expert_names
+                    ).apply()
+                    return job_result.get()
+                except Exception:  # pylint: disable=broad-exception-caught
+                    # pragma: no cover - defensive fallback
+                    out: list[dict[str, str]] = []
+                    for name in expert_names:
+                        out.append(expert_prepare.apply(args=(name, user_msg)).get())
+                    return out
+
+            results = await asyncio.to_thread(_run_group)
+            prepared: list[str] = []
+            for item in results:
+                prepared.append(item["expert"])
+                await asyncio.sleep(0.05)
+                await self.send_json(
+                    {
+                        "type": "expert_update",
+                        "expert": item["expert"],
+                        "message": item["message"],
+                    }
+                )
+            await asyncio.sleep(0.1)
+            await self.send_json(
+                {"type": "expert_update", "message": "Experts prepared.", "experts": prepared}
+            )
+            logger.info("chat.sent_expert_updates", experts=len(prepared))
+            return
         agents: list[DynamicExpertAgent] = create_agents(specs, memory=stm)
         prepared: list[str] = []
 
@@ -87,7 +130,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         )
         logger.info("chat.sent_expert_updates", experts=len(prepared))
 
-    async def receive_json(self, content: dict, **kwargs) -> None:  # type: ignore[override]
+    async def receive_json(self, content: dict, **_kwargs) -> None:  # type: ignore[override]
         """Handle an incoming JSON payload from the client."""
         user_msg = content.get("message")
         logger.info("chat.receive", message=user_msg)

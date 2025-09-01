@@ -12,6 +12,8 @@ Provides:
 - ``create_agents()`` to instantiate ``DynamicExpertAgent`` instances for each spec.
 
 Notes:
+- Cross-domain by design: includes IT and non-IT fields (e.g., legal, finance, marketing,
+  operations, healthcare, education). Unknown LLM-returned roles are preserved as-is.
 - The LLM provider is detected via ``agents_core.llm.detect_llm()`` unless one is injected.
 - Bullet parsing accepts ``-``, ``*``, ``•``, en-dash ``–`` and numbered lists like ``1.``/``1)``.
 """
@@ -183,6 +185,139 @@ _EXPERT_SYNONYMS: dict[str, tuple[str, ...]] = {
         "ontology",
         "knowledge graph",
     ),
+    # --- Non-IT / cross-domain categories ---
+    "legal": (
+        "legal",
+        "law",
+        "contract",
+        "gdpr",
+        "privacy",
+        "ip",
+        "license",
+        "trademark",
+        "compliance",
+    ),
+    "finance": (
+        "finance",
+        "budget",
+        "budgeting",
+        "accounting",
+        "pricing",
+        "cost",
+        "roi",
+        "revenue",
+        "expense",
+        "forecast",
+        "valuation",
+    ),
+    "marketing": (
+        "marketing",
+        "seo",
+        "sem",
+        "content",
+        "campaign",
+        "brand",
+        "social",
+        "advertising",
+        "copy",
+    ),
+    "sales": (
+        "sales",
+        "crm",
+        "pipeline",
+        "lead",
+        "outreach",
+        "negotiation",
+        "deal",
+    ),
+    "hr": (
+        "hr",
+        "hiring",
+        "recruiting",
+        "onboarding",
+        "policy",
+        "payroll",
+        "benefits",
+        "people",
+    ),
+    "operations": (
+        "operations",
+        "process",
+        "supply",
+        "logistics",
+        "procurement",
+        "vendor",
+        "inventory",
+        "ops",
+    ),
+    "governance": (
+        "governance",
+        "risk",
+        "audit",
+        "gxp",
+        "sox",
+        "gxp compliance",
+    ),
+    "healthcare": (
+        "healthcare",
+        "medical",
+        "clinical",
+        "patient",
+        "diagnosis",
+        "treatment",
+        "hipaa",
+        "fda",
+    ),
+    "education": (
+        "education",
+        "teaching",
+        "curriculum",
+        "training",
+        "learning",
+        "pedagogy",
+    ),
+    "research": (
+        "research",
+        "experiment",
+        "hypothesis",
+        "analysis",
+        "survey",
+        "literature",
+    ),
+    "data_science": (
+        "data science",
+        "analytics",
+        "statistics",
+        "modeling",
+        "visualization",
+        "hypothesis testing",
+    ),
+    "ethics": (
+        "ethics",
+        "fairness",
+        "bias",
+        "responsible ai",
+    ),
+    "localization": (
+        "localization",
+        "translation",
+        "i18n",
+        "l10n",
+    ),
+    "manufacturing": (
+        "manufacturing",
+        "production",
+        "quality control",
+        "lean",
+        "six sigma",
+    ),
+    "support": (
+        "support",
+        "customer support",
+        "helpdesk",
+        "ticket",
+        "csat",
+    ),
 }
 
 
@@ -216,6 +351,41 @@ def _parse_bulleted_lines(text: str) -> list[str]:
     return out
 
 
+def _catalog_string() -> str:
+    """Return a comma-separated catalog of canonical expert roles."""
+    return ", ".join(_EXPERT_SYNONYMS.keys())
+
+
+def _build_crossdomain_prompt(text: str) -> str:
+    """Construct the LLM prompt for cross-domain expert extraction."""
+    catalog = _catalog_string()
+    return (
+        "You coordinate a cross-domain expert team (IT and non-IT). "
+        "From the tasks/description, list the required expert roles as bullet lines "
+        "starting with '- '. Prefer canonical roles from this catalog when applicable: "
+        f"{catalog}. If a suitable role is not in the catalog, output a precise freeform role.\n"
+        f"Input:\n{text}\n"
+        "Return only the list of roles, one per line, no extra text."
+    )
+
+
+def _map_role_to_spec(role_norm: str) -> ExpertSpec | None:
+    """Map a normalized role string to a canonical ExpertSpec if possible.
+
+    Returns None when no canonical mapping is found.
+    """
+    if role_norm in _EXPERT_SYNONYMS:
+        return ExpertSpec(expertise=role_norm, confidence=0.9, source="llm")
+    for cat, words in _EXPERT_SYNONYMS.items():
+        if (
+            role_norm == cat
+            or any(role_norm == w for w in words)
+            or any(role_norm in w for w in words)
+        ):
+            return ExpertSpec(expertise=cat, confidence=0.6, source="llm")
+    return None
+
+
 def _llm_experts_from_text(text: str, llm: LLM | None = None) -> ExpertSelection:
     """Ask an LLM to propose expert roles; parse and map to canonical categories."""
     provider = llm if llm is not None else detect_llm()
@@ -227,15 +397,7 @@ def _llm_experts_from_text(text: str, llm: LLM | None = None) -> ExpertSelection
     }
     if provider is None:
         return [], debug
-    prompt = (
-        "You are coordinating a cross-functional software team. "
-        "Given the following tasks or description, list the expert roles required "
-        "as bullet lines starting with '- '. Use canonical software roles where "
-        "possible, such as frontend, backend, database, devops, security, qa, ml, "
-        "product, design, performance, realtime, observability, knowledge_graph.\n"
-        f"Input:\n{text}\n"
-        "Return only the list of roles, one per line, no extra text."
-    )
+    prompt = _build_crossdomain_prompt(text)
     debug["prompt"] = prompt
     try:
         raw = provider.generate(prompt)
@@ -248,15 +410,12 @@ def _llm_experts_from_text(text: str, llm: LLM | None = None) -> ExpertSelection
     mapped: list[ExpertSpec] = []
     for r in roles:
         r_norm = _normalize(r)
-        # direct match
-        if r_norm in _EXPERT_SYNONYMS:
-            mapped.append(ExpertSpec(expertise=r_norm, confidence=0.9, source="llm"))
-            continue
-        # fuzzy: map to first category containing the token
-        for cat, words in _EXPERT_SYNONYMS.items():
-            if r_norm == cat or any(r_norm == w for w in words) or any(r_norm in w for w in words):
-                mapped.append(ExpertSpec(expertise=cat, confidence=0.6, source="llm"))
-                break
+        spec = _map_role_to_spec(r_norm)
+        if spec is None and r_norm:
+            # preserve unknown roles as-is to enable non-IT experts
+            spec = ExpertSpec(expertise=r_norm, confidence=0.5, source="llm")
+        if spec is not None:
+            mapped.append(spec)
     # de-duplicate by expertise, keep highest confidence
     best: dict[str, ExpertSpec] = {}
     for spec in mapped:

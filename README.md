@@ -84,10 +84,14 @@ API documentation (OpenAPI) is available when the server is running:
 - Progressive planning streamed over WebSocket
   - Events: `po_plan_start`, `po_plan_step`, `po_plan_final`
 - Agile Coach feedback after planning: `ac_feedback`
-- Dynamic expert stubs with streamed updates: `expert_update`
+- Dynamic expert updates over WebSocket: `expert_update`
+- Cross-domain expert selection (IT and non-IT) via heuristic + optional LLM
+  - Unknown LLM-returned roles are preserved as-is, enabling non-IT experts
+- Orchestrator-driven experts pipeline (Celery) exposed via API
 - Short-term memory (Redis; shared in-memory fallback for dev/tests)
 - Long-term memory (Neo4j) minimal note upserts
-- REST API: health and short-term memory history
+- REST API: health, version, memory, planning, feedback, agent thinking,
+  experts pipeline, retrospective
 - Tests (pytest) and CI (GitHub Actions)
 
 ## WebSocket Protocol
@@ -116,7 +120,18 @@ LLM/heuristic-based expert selection.
 
 ## REST API
 - `GET /api/health` → `{ "status": "ok" }`
+- `GET /api/version` → `{ "version": "x.y.z" }`
 - `GET /api/memory/<agent>/history?limit=20` → `{ agent, limit, items }`
+- `POST /api/memory/<agent>/append` with `{ item }`
+- `POST /api/plan` with `{ description }` → `{ tasks, count }` (add `_debug` with `?debug=1`)
+- `POST /api/ac_feedback` with `{ tasks: [...] }` → `{ feedback }`
+- `POST /api/agent/think` with `{ agent: "po"|"ac", goal }` → `{ thought }` (add `_debug` with `?debug=1`)
+- `POST /api/experts/run[?debug=1][&async=1]` with `{ description }`
+  - Response: `{ tasks, experts, results: { [expert]: message }, _debug? }`
+  - `_debug` may include LLM traces (e.g., provider, prompt, raw) when available
+  - Async scheduling is attempted only when `REDIS_URL` is configured; otherwise executes in-process
+  - Cross-domain expert selection supported (legal, finance, marketing, HR, etc.). Unknown roles from LLM are preserved.
+- `POST /api/retro/run` → `{ accepted: true, scheduled: bool }`
 
 ## Configuration
 Key environment variables (see `env.example`):
@@ -124,6 +139,7 @@ Key environment variables (see `env.example`):
 - `NEO4J_URI`, `NEO4J_USER`, `NEO4J_PASSWORD` — Neo4j for long-term memory (optional)
 - `OLLAMA_HOST` or `OPENAI_API_KEY` — LLM integration (optional)
 - `DJANGO_SECRET_KEY`, `DJANGO_DEBUG`, `ALLOWED_HOSTS` — Django
+- `EXPERTS_USE_ORCHESTRATOR` — When `1` (or `true`/`yes`/`on`), WebSocket expert preparation is delegated to the orchestrator; otherwise runs in-process
 
 ## Development
 - Preferred runner: `make daphne` (ASGI on port 8001)

@@ -47,7 +47,6 @@ myst_enable_extensions = [
 myst_fence_as_directive = ["mermaid"]
 
 # Optional: specify mermaid version used by sphinxcontrib-mermaid (rendered client-side)
-# mermaid_version = "10.9.0"
 
 source_suffix = {
     ".rst": "restructuredtext",

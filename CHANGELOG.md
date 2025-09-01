@@ -8,11 +8,20 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 ### Added
 - Additional open-source docs (SECURITY.md, GitHub issue/PR templates)
 - Sphinx Mermaid support (`sphinxcontrib-mermaid`) and MyST fence mapping for ```mermaid blocks
+- Orchestrator-driven experts pipeline Celery task `run_experts_pipeline`
+- API endpoint `POST /api/experts/run` with `?debug=1` and optional `&async=1`
+- Tests covering experts pipeline (basic, debug, invalid JSON, invalid serializer)
+- Cross-domain expert selection (IT + non-IT) with expanded catalog (e.g., legal, finance,
+  marketing, HR, operations, healthcare, education, governance, research, data_science,
+  ethics, localization, manufacturing, support)
+- Tests for cross-domain experts and preservation of unknown LLM roles
 
 ### Changed
 - Documentation refinements in README and Arc42
 - Standardized Ruff usage across docs, Makefile, and CI (use `ruff check .` and `--fix` where appropriate); removed invalid flags.
 - Documented optional `_debug` payload in initial `expert_update` WebSocket event and expanded related module docstrings.
+- Experts pipeline executes Celery groups synchronously in-process for tests/local to avoid broker dependency; async scheduling only attempted when `REDIS_URL` is set
+- LLM prompt for expert selection made cross-domain and unknown roles are preserved as-is
 
 ## [0.1.0] - 2025-08-24
 ### Added

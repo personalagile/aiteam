@@ -1,6 +1,6 @@
 # arc42 – Architecture Documentation AITEAM
 
-Version: 0.1.0 • Date: 2025-08-25
+Version: 0.1.0 • Date: 2025-09-01
 
 ## 1. Introduction and Goals
 
@@ -8,7 +8,7 @@ AITEAM is an agile, agentic AI system. It boots with two core agents:
 - Product Owner (PO)
 - Agile Coach (AC)
 
-Users interact with the PO through a chat UI. PO and AC select cross-functional experts when needed and spawn dynamic expert agents. Each agent has short-term (Redis) and long-term memory (Neo4j) and may access the internet. Goal: an iterative, learning system that plans, executes, and continuously improves work.
+Users interact with the PO through a chat UI. PO and AC select cross-functional, cross-domain experts (IT and non-IT) when needed and spawn dynamic expert agents. Each agent has short-term (Redis) and long-term memory (Neo4j) and may access the internet. Goal: an iterative, learning system that plans, executes, and continuously improves work.
 
 Non-goals: a full MLOps/vector database platform, proprietary tool integrations beyond a minimal demo.
 
@@ -43,6 +43,7 @@ graph LR
 - Short feedback loops (PO plans, AC coaches, experts solve)
 - Persist learning: short- vs. long-term
 - Test-driven, quality-assured development
+- Cross-domain expert selection combining lightweight heuristics with optional LLM guidance; unknown LLM-returned roles are preserved as-is to enable domain breadth (e.g., legal, finance, marketing, HR, healthcare)
 
 ## 5. Building Block View
 ### 5.1 Level 1
@@ -158,8 +159,9 @@ graph LR
 - Storage: short-term Redis lists, long-term Neo4j graph
 - Fault tolerance: optional dependencies with graceful fallback
 - Security: minimal for dev; extendable with AuthN/Z, rate limits
+- Expert selection: synonym catalog covering IT and non-IT domains; LLM-assisted extraction; preserve unknown roles for precision; `_debug` exposes provider, prompt, and raw response where available
 - Tests/Quality: pytest, Ruff, Black, isort, Pylint; CI via GitHub Actions
- - Versioning: Semantic Versioning (SemVer); Changelog: Keep a Changelog; see CHANGELOG.md
+- Versioning: Semantic Versioning (SemVer); Changelog: Keep a Changelog; see CHANGELOG.md
 
 ## 9. Architectural Decisions (ADRs)
 - Django + Channels for WebSocket communication
@@ -206,6 +208,8 @@ graph LR
    - Files: `agents_core/base.py`, `agents_core/product_owner.py`, `agents_core/llm.py`
  - Dynamic experts: selection and in-chat concurrent preparation with streamed `expert_update` events (initial event may include `_debug` with LLM/heuristic details)
    - Files: `agents_core/dynamic_expert.py`, `apps/chat/consumers.py`
+ - Cross-domain expert selection: IT and non-IT categories via synonym catalog and optional LLM; unknown roles preserved for precision
+   - Files: `agents_core/dynamic_expert.py`; API: `POST /api/experts/run`; Docs: README, CHANGELOG
 
 ### Stubs (placeholder logic available)
 - Long-term memory (Neo4j) minimal implementation, optional
